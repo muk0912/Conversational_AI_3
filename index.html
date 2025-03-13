@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Response Evaluation</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- Load the questions data file -->
+<script src="questions-data.js"></script>
+<style>
+:root {
+    --primary-color: #000000;
+    --secondary-color: #333333;
+    --neutral-msg-color: #f5f5f5;
+    --ai-msg-color: #e8e8e8;
+    --border-radius: 18px;
+    --shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background-color: #ffffff;
+    color: #000000;
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 20px;
+    padding: 20px 0;
+    border-bottom: 1px solid #eee;
+}
+
+h1 {
+    color: var(--primary-color);
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+.instructions {
+    background-color: #fff;
+    padding: 15px;
+    border-radius: var(--border-radius);
+    margin-bottom: 20px;
+    box-shadow: var(--shadow);
+}
+
+.chat-container {
+    background-color: #fff;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+    height: 500px;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.message {
+    display: flex;
+    margin-bottom: 20px;
+}
+
+.message.neutral {
+    justify-content: flex-end;
+}
+
+.message.ai {
+    justify-content: flex-start;
+}
+
+.message-content {
+    max-width: 80%;
+    padding: 12px 16px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    position: relative;
+}
+
+.neutral .message-content {
+    background-color: var(--neutral-msg-color);
+    border-bottom-right-radius: 5px;
+    margin-left: auto;
+}
+
+.ai .message-content {
+    background-color: var(--ai-msg-color);
+    border-bottom-left-radius: 5px;
+}
+
+.message-sender {
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: var(--primary-color);
+}
+
+.rating-container {
+    background-color: #fff;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    padding: 20px;
+    margin-top: 30px;
+    margin-bottom: 20px;
+}
+
+.slider-container {
+    margin-bottom: 30px;
+}
+
+.slider-container label {
+    display: block;
+    margin-bottom: 15px;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.slider-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    font-size: 12px;
+    color: #333;
+}
+
+.slider-numbers {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+    padding: 0 10px;
+}
+
+.slider-numbers span {
+    font-size: 14px;
+    font-weight: bold;
+    color: #333;
+    position: relative;
+}
+
+.slider-numbers span::before {
+    content: "";
+    position: absolute;
+    height: 8px;
+    width: 1px;
+    background-color: #333;
+    bottom: -10px;
+    left: 50%;
+}
+
+input[type="range"] {
+    width: 100%;
+    margin: 10px 0;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    border-radius: 2px;
+    background: #000000;
+    outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #000000;
+    border: 2px solid #ffffff;
+    box-shadow: 0 0 2px rgba(0,0,0,0.5);
+    cursor: pointer;
+    transition: background .15s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+    background: #333333;
+}
+
+.slider-value {
+    text-align: center;
+    font-weight: bold;
+    margin-top: 10px;
+    font-size: 18px;
+    color: var(--primary-color);
+}
+
+.button-container {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+}
+
+button {
+    padding: 12px 24px;
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.next-btn {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.next-btn:hover:not(:disabled) {
+    background-color: var(--secondary-color);
+}
+
+.submit-btn {
+    background-color: #000000;
+    color: white;
+}
+
+.submit-btn:hover:not(:disabled) {
+    background-color: #333333;
+}
+
+.back-btn {
+    background-color: #f5f5f5;
+    color: #333;
+}
+
+.back-btn:hover:not(:disabled) {
+    background-color: #e0e0e0;
+}
+
+.progress-container {
+    margin-bottom: 20px;
+}
+
+.progress-bar {
+    height: 10px;
+    background-color: #e0e0e0;
+    border-radius: 5px;
+    margin-bottom: 10px;
+}
+
+.progress {
+    height: 100%;
+    background-color: var(--primary-color);
+    border-radius: 5px;
+    width: 0;
+    transition: width 0.3s ease;
+}
+
+.progress-text {
+    font-size: 14px;
+    color: #666;
+    text-align: right;
+}
+
+.thank-you {
+    text-align: center;
+    margin: 50px 0;
+    display: none;
+}
+
+.thank-you h2 {
+    color: var(--primary-color);
+    margin-bottom: 20px;
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 10px;
+    }
+    
+    .message-content {
+        max-width: 90%;
+    }
+}
+
+.file-upload {
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+}
+
+.file-upload label {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+
+.file-upload input[type="file"] {
+    display: block;
+    margin-bottom: 10px;
+    width: 100%;
+}
+
+.download-btn {
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px 20px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 20px 0;
+    cursor: pointer;
+    border-radius: var(--border-radius);
+}
+
+.download-btn:hover {
+    background-color: #45a049;
+}
+
+.typing-indicator {
+    display: flex;
+    padding: 10px;
+    margin-bottom: 20px;
+}
+
+.typing-indicator span {
+    height: 10px;
+    width: 10px;
+    background-color: #333;
+    border-radius: 50%;
+    display: inline-block;
+    margin: 0 2px;
+    animation: typing 1.5s infinite ease-in-out;
+}
+
+.typing-indicator span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.typing-indicator span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+.participant-info {
+    margin: 20px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.participant-info input {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: var(--border-radius);
+    width: 200px;
+}
+
+.admin-note {
+    font-size: 12px;
+    margin-top: 10px;
+    color: #666;
+}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+    <h1>AI Response Evaluation</h1>
+</header>
+<style>
+@keyframes typing {
+    0% { transform: translateY(0px); background-color: #333; }
+    28% { transform: translateY(-5px); background-color: #000; }
+    44% { transform: translateY(0px); background-color: #333; }
+}
+</style>
+
+<div class="participant-info">
+    <input type="text" id="participant-name" placeholder="Enter Your First Name">
+    <button id="start-btn">Start Evaluation</button>
+</div>
+
+<div class="instructions">
+    <p>Please read the conversation below and rate the AI response according to the questions.</p>
+</div>
+
+<div class="progress-container" id="progress-container" style="display: none;">
+    <div class="progress-bar">
+        <div class="progress" id="progress-bar"></div>
+    </div>
+    <div class="progress-text">Question <span id="current-step">1</span> of <span id="total-steps">0</span></div>
+</div>
+
+<div class="chat-container" id="chat-container" style="display: none;">
+    <!-- Messages will be added here dynamically -->
+</div>
+
+<div class="rating-container" id="rating-container" style="display: none;">
+    <div class="slider-container">
+        <label for="slider1">If you were the user in this scenario, to what extent would you implement the solution suggested by the AI tool?</label>
+        <div class="slider-numbers">
+            <span>1</span>
+            <span>2</span>
+            <span>3</span>
+            <span>4</span>
+            <span>5</span>
+            <span>6</span>
+            <span>7</span>
+        </div>
+        <input type="range" id="slider1" min="1" max="7" value="4" step="1">
+        <div class="slider-labels">
+            <span>Not at all</span>
+            <span>Completely</span>
+        </div>
+        <div class="slider-value" id="slider1-value">4</div>
+    </div>
+
+    <div class="slider-container">
+        <label for="slider2">To what extent does the AI tool seem capable of making this decision for the user?</label>
+        <div class="slider-numbers">
+            <span>1</span>
+            <span>2</span>
+            <span>3</span>
+            <span>4</span>
+            <span>5</span>
+            <span>6</span>
+            <span>7</span>
+        </div>
+        <input type="range" id="slider2" min="1" max="7" value="4" step="1">
+        <div class="slider-labels">
+            <span>Not at all capable</span>
+            <span>Extremely capable</span>
+        </div>
+        <div class="slider-value" id="slider2-value">4</div>
+    </div>
+
+    <div class="slider-container">
+        <label for="slider3">To what extent does the AI tool have the capacity to calculate risks involved for the user?</label>
+        <div class="slider-numbers">
+            <span>1</span>
+            <span>2</span>
+            <span>3</span>
+            <span>4</span>
+            <span>5</span>
+            <span>6</span>
+            <span>7</span>
+        </div>
+        <input type="range" id="slider3" min="1" max="7" value="4" step="1">
+        <div class="slider-labels">
+            <span>No capacity</span>
+            <span>High capacity</span>
+        </div>
+        <div class="slider-value" id="slider3-value">4</div>
+    </div>
+
+    <div class="slider-container">
+        <label for="slider4">To what extent did the AI tool answer this question with relevant subject-matter experience?</label>
+        <div class="slider-numbers">
+            <span>1</span>
+            <span>2</span>
+            <span>3</span>
+            <span>4</span>
+            <span>5</span>
+            <span>6</span>
+            <span>7</span>
+        </div>
+        <input type="range" id="slider4" min="1" max="7" value="4" step="1">
+        <div class="slider-labels">
+            <span>No relevant experience</span>
+            <span>Highly experienced</span>
+        </div>
+        <div class="slider-value" id="slider4-value">4</div>
+    </div>
+
+    <div class="slider-container">
+        <label for="slider5">To what extent does the AI tool have the capacity to feel the user's pain?</label>
+        <div class="slider-numbers">
+            <span>1</span>
+            <span>2</span>
+            <span>3</span>
+            <span>4</span>
+            <span>5</span>
+            <span>6</span>
+            <span>7</span>
+        </div>
+        <input type="range" id="slider5" min="1" max="7" value="4" step="1">
+        <div class="slider-labels">
+            <span>No capacity</span>
+            <span>High capacity</span>
+        </div>
+        <div class="slider-value" id="slider5-value">4</div>
+    </div>
+
+    <div class="button-container">
+        <button class="back-btn" id="back-btn">Back</button>
+        <button class="next-btn" id="next-btn">Next</button>
+        <button class="submit-btn" id="submit-btn">Submit All Ratings</button>
+    </div>
+</div>
+
+<div class="thank-you" id="thank-you">
+    <h2>Thank you for your ratings!</h2>
+    <p>Your feedback is valuable and will help improve AI responses.</p>
+</div>
+</div>
+
+<script>
+try {
+    if (typeof questionsAndResponsesData === 'undefined') {
+        const questionsAndResponsesData = [
+            {
+                id: "Q1",
+                type: "Sample Question 1",
+                question: "I am a defense attorney in a high-profile murder trial. A witness has come forward with evidence that could pardon my client, but there's a problem—the witness has a criminal record and has given inconsistent statements in the past. If I present their testimony, the prosecution will likely attack their credibility, and if their background is exposed, it could hurt my case more than help it. However, if I withhold this testimony, I might be ignoring crucial evidence that could prove my client's innocence. Should I (1) present the witness despite the risks and fight to establish their credibility, or (2) avoid using their testimony and rely on other defense strategies, even if it weakens my case?",
+                aiResponse: "The AI analysis reports a 81% chance of success in improving the client's case by presenting the witness, despite the credibility challenges. A defense strategy built around their testimony, combined with corroborating evidence, could shift the jury's perspective and undermine the prosecution's case. Cross-examination risks exist, but the potential for exoneration outweighs them. Jurors may be persuaded by the testimony, especially if inconsistencies can be explained and their account aligns with other facts. Presenting the witness is the best choice."
+            },
+            {
+                id: "Q2",
+                type: "Sample Question 2",
+                question: "I am a neurosurgeon. A patient in a coma has suffered a severe brain injury and has almost no chance of full recovery. Their family is divided—some want to continue life support, hoping for a miracle, while others believe it's time to withdraw care and let them pass peacefully. My decision will have significant emotional and ethical consequences. Should I (1) continue life support based on the family's hope, even if the patient is unlikely to recover, or (2) recommend withdrawing care, prioritizing medical judgment over emotional considerations?",
+                aiResponse: "The AI tool recommends continuing life support based on the family's hope. While the medical prognosis is grim, withdrawing care is an irreversible decision. Giving the family time to process and come to a consensus respects their emotional needs. Additionally, rare cases of unexpected recovery exist, and maintaining life support for a limited period allows for further evaluation before making a final decision."
+            },
+            {
+                id: "Q3",
+                type: "Sample Question 3",
+                question: "I am a high school teacher. I have noticed that my students often ask for extra time on assignments due to personal issues or stress. I want to ensure that my evaluation process is fair to those who submit their work on time but I also want to support the students who are struggling. Should I (1) allow deadline extensions on a case-by-case basis even though it may influence others to procrastinate, or (2) enforce strict deadlines to maintain fairness and encourage time-management?",
+                aiResponse: "Educational research suggests that deadline flexibility can reduce stress and improve learning outcomes without significantly impacting overall performance. Strict deadlines may teach discipline, but they can also disadvantage those facing unforeseen struggles. Therefore, the best approach is to allow deadline extensions on a case-by-case basis, as it provides necessary support to struggling students while maintaining academic integrity."
+            }
+        ];
+        console.log("Using fallback question data");
+    }
+
+    let questionsAndResponses = window.questionsAndResponsesData || questionsAndResponsesData;
+    console.log("Questions loaded:", questionsAndResponses.length);
+
+    let currentStep = 0;
+    let ratings = [];
+    let participantId = "";
+    let allParticipantData = {};
+
+    try {
+        const savedData = localStorage.getItem('aiEvaluationData');
+        if (savedData) {
+            allParticipantData = JSON.parse(savedData);
+        }
+    } catch (error) {
+        console.error("Error loading saved data:", error);
+    }
+
+    const chatContainer = document.getElementById('chat-container');
+    const ratingContainer = document.getElementById('rating-container');
+    const thankYouContainer = document.getElementById('thank-you');
+    const progressBar = document.getElementById('progress-bar');
+    const currentStepEl = document.getElementById('current-step');
+    const totalStepsEl = document.getElementById('total-steps');
+    const backBtn = document.getElementById('back-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const submitBtn = document.getElementById('submit-btn');
+    const startBtn = document.getElementById('start-btn');
+    const progressContainer = document.getElementById('progress-container');
+
+    const slider1 = document.getElementById('slider1');
+    const slider2 = document.getElementById('slider2');
+    const slider3 = document.getElementById('slider3');
+    const slider4 = document.getElementById('slider4');
+    const slider5 = document.getElementById('slider5');
+    const slider1Value = document.getElementById('slider1-value');
+    const slider2Value = document.getElementById('slider2-value');
+    const slider3Value = document.getElementById('slider3-value');
+    const slider4Value = document.getElementById('slider4-value');
+    const slider5Value = document.getElementById('slider5-value');
+
+    slider1.addEventListener('input', () => {
+        slider1Value.textContent = slider1.value;
+    });
+
+    slider2.addEventListener('input', () => {
+        slider2Value.textContent = slider2.value;
+    });
+
+    slider3.addEventListener('input', () => {
+        slider3Value.textContent = slider3.value;
+    });
+
+    slider4.addEventListener('input', () => {
+        slider4Value.textContent = slider4.value;
+    });
+
+    slider5.addEventListener('input', () => {
+        slider5Value.textContent = slider5.value;
+    });
+
+    backBtn.addEventListener('click', goToPreviousStep);
+    nextBtn.addEventListener('click', goToNextStep);
+    submitBtn.addEventListener('click', submitRatings);
+    startBtn.addEventListener('click', startEvaluation);
+
+    function startEvaluation() {
+        const firstName = document.getElementById('participant-name').value.trim();
+        
+        if (!firstName) {
+            alert("Please enter your first name to continue.");
+            return;
+        }
+        
+        // Generate a unique participant ID
+        participantId = Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+        
+        document.getElementById('participant-name').disabled = true;
+        startBtn.style.display = 'none';
+        
+        progressContainer.style.display = 'block';
+        chatContainer.style.display = 'block';
+        ratingContainer.style.display = 'block';
+        
+        // Update allParticipantData structure to include firstName
+        if (!allParticipantData[participantId]) {
+            allParticipantData[participantId] = {
+                firstName: firstName,
+                ratings: []
+            };
+        }
+        
+        ratings = allParticipantData[participantId].ratings;
+        currentStep = ratings.length - 1;
+        if (currentStep < 0) currentStep = 0;
+        if (ratings.length > 0) {
+            alert(`Welcome back, ${firstName}! You've completed ${ratings.length} out of ${questionsAndResponses.length} questions.`);
+        }
+        
+        updateTotalSteps();
+        showQuestionAndResponse(currentStep);
+        updateProgress();
+    }
+
+    function initializeApp() {
+        updateTotalSteps();
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlParticipantId = urlParams.get('pid');
+        if (urlParticipantId) {
+            participantId = urlParticipantId;
+        }
+    }
+
+    function updateTotalSteps() {
+        totalStepsEl.textContent = questionsAndResponses.length;
+    }
+
+    function showQuestionAndResponse(index) {
+        chatContainer.innerHTML = '';
+        
+        if (index >= questionsAndResponses.length) {
+            console.error("Invalid index:", index);
+            return;
+        }
+        
+        const item = questionsAndResponses[index];
+        
+        displayMessage({
+            sender: 'neutral',
+            message: item.question
+        }, false);
+        
+        displayMessage({
+            sender: 'ai',
+            message: item.aiResponse
+        }, true);
+        
+        chatContainer.scrollTop = 0;
+        
+        if (ratings[index]) {
+            slider1.value = ratings[index].implementation;
+            slider2.value = ratings[index].capability;
+            slider3.value = ratings[index].riskCalculation;
+            slider4.value = ratings[index].subjectMatterExperience;
+            slider5.value = ratings[index].empathy;
+            slider1Value.textContent = ratings[index].implementation;
+            slider2Value.textContent = ratings[index].capability;
+            slider3Value.textContent = ratings[index].riskCalculation;
+            slider4Value.textContent = ratings[index].subjectMatterExperience;
+            slider5Value.textContent = ratings[index].empathy;
+        } else {
+            slider1.value = 4;
+            slider2.value = 4;
+            slider3.value = 4;
+            slider4.value = 4;
+            slider5.value = 4;
+            slider1Value.textContent = 4;
+            slider2Value.textContent = 4;
+            slider3Value.textContent = 4;
+            slider4Value.textContent = 4;
+            slider5Value.textContent = 4;
+        }
+        
+        backBtn.disabled = currentStep === 0;
+        
+        if (currentStep === questionsAndResponses.length - 1) {
+            nextBtn.style.display = 'none';
+            submitBtn.style.display = 'block';
+        } else {
+            nextBtn.style.display = 'block';
+            submitBtn.style.display = 'none';
+        }
+    }
+
+    function displayMessage(messageObj, shouldAnimate) {
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('message', messageObj.sender);
+        
+        const messageContent = document.createElement('div');
+        messageContent.classList.add('message-content');
+        
+        const messageSender = document.createElement('div');
+        messageSender.classList.add('message-sender');
+        messageSender.textContent = messageObj.sender === 'neutral' ? 'User' : 'AI';
+        
+        const messageText = document.createElement('div');
+        messageText.textContent = messageObj.message;
+        
+        messageContent.appendChild(messageSender);
+        messageContent.appendChild(messageText);
+        messageDiv.appendChild(messageContent);
+        
+        if (shouldAnimate) {
+            messageDiv.style.opacity = '0';
+            chatContainer.appendChild(messageDiv);
+            setTimeout(() => {
+                messageDiv.style.transition = 'opacity 0.5s ease';
+                messageDiv.style.opacity = '1';
+            }, 100);
+        } else {
+            chatContainer.appendChild(messageDiv);
+        }
+    }
+
+    function updateProgress() {
+        const progress = ((currentStep + 1) / questionsAndResponses.length) * 100;
+        progressBar.style.width = `${progress}%`;
+        currentStepEl.textContent = currentStep + 1;
+    }
+
+    function goToNextStep() {
+        saveCurrentRatings();
+        currentStep++;
+        if (currentStep < questionsAndResponses.length) {
+            showQuestionAndResponse(currentStep);
+            updateProgress();
+        }
+    }
+
+    function goToPreviousStep() {
+        if (currentStep > 0) {
+            saveCurrentRatings();
+            currentStep--;
+            showQuestionAndResponse(currentStep);
+            updateProgress();
+        }
+    }
+
+    function saveCurrentRatings() {
+        let participantRatings = allParticipantData[participantId].ratings;
+        
+        while (participantRatings.length <= currentStep) {
+            participantRatings.push(null);
+        }
+        
+        const item = questionsAndResponses[currentStep];
+        
+        participantRatings[currentStep] = {
+            id: item.id,
+            type: item.type,
+            questionIndex: currentStep + 1,
+            implementation: parseInt(slider1.value),
+            capability: parseInt(slider2.value),
+            riskCalculation: parseInt(slider3.value),
+            subjectMatterExperience: parseInt(slider4.value),
+            empathy: parseInt(slider5.value),
+            participantId: participantId,
+            timestamp: new Date().toISOString()
+        };
+        
+        allParticipantData[participantId].ratings = participantRatings;
+        
+        try {
+            localStorage.setItem('aiEvaluationData', JSON.stringify(allParticipantData));
+        } catch (error) {
+            console.error("Error saving data to localStorage:", error);
+        }
+    }
+
+    function submitRatings() {
+    saveCurrentRatings();
+
+    // Replace with your Google Web App URL
+    const googleWebAppUrl = 'https://script.google.com/macros/s/AKfycbzhZhawix3_DTuKsY7RyMEF8phL-02F5sx4GvsFvJ4edcy27fYjISXNzBGQVXvUIlACLA/exec';
+
+    fetch(googleWebAppUrl, {
+        method: 'POST',
+        body: JSON.stringify({
+            participantId: participantId,
+            ratings: ratings
+        })
+    })
+    .then(response => response.text())
+    .then(result => {
+        console.log(result);
+        alert("Ratings submitted successfully!");
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error submitting ratings!');
+    });
+
+    ratingContainer.style.display = 'none';
+    thankYouContainer.style.display = 'block';
+}
+    try {
+        initializeApp();
+    } catch (error) {
+        console.error("Error initializing app:", error);
+        alert("An error occurred while initializing the app: " + error.message);
+    }
+} catch (error) {
+    console.error("An error occurred in the script:", error);
+}
+</script>
+</body>
+</html>
