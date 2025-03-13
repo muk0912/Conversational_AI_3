@@ -323,6 +323,7 @@ button:disabled {
     background-color: #45a049;
 }
 
+/* Typing animation */
 .typing-indicator {
     display: flex;
     padding: 10px;
@@ -345,6 +346,12 @@ button:disabled {
 
 .typing-indicator span:nth-child(3) {
     animation-delay: 0.4s;
+}
+
+@keyframes typing {
+    0% { transform: translateY(0px); background-color: #333; }
+    28% { transform: translateY(-5px); background-color: #000; }
+    44% { transform: translateY(0px); background-color: #333; }
 }
 
 .participant-info {
@@ -375,13 +382,6 @@ button:disabled {
 <header>
     <h1>AI Response Evaluation</h1>
 </header>
-<style>
-@keyframes typing {
-    0% { transform: translateY(0px); background-color: #333; }
-    28% { transform: translateY(-5px); background-color: #000; }
-    44% { transform: translateY(0px); background-color: #333; }
-}
-</style>
 
 <div class="participant-info">
     <input type="text" id="participant-name" placeholder="Enter a Nick Name">
@@ -664,51 +664,28 @@ try {
         
         const item = questionsAndResponses[index];
         
+        // Display the user's question
         displayMessage({
             sender: 'neutral',
             message: item.question
         }, false);
         
-        displayMessage({
-            sender: 'ai',
-            message: item.aiResponse
-        }, true);
+        // Show typing indicator for AI
+        displayTypingIndicator();
         
-        chatContainer.scrollTop = 0;
-        
-        if (ratings[index]) {
-            slider1.value = ratings[index].implementation;
-            slider2.value = ratings[index].capability;
-            slider3.value = ratings[index].riskCalculation;
-            slider4.value = ratings[index].subjectMatterExperience;
-            slider5.value = ratings[index].empathy;
-            slider1Value.textContent = ratings[index].implementation;
-            slider2Value.textContent = ratings[index].capability;
-            slider3Value.textContent = ratings[index].riskCalculation;
-            slider4Value.textContent = ratings[index].subjectMatterExperience;
-            slider5Value.textContent = ratings[index].empathy;
-        } else {
-            slider1.value = 4;
-            slider2.value = 4;
-            slider3.value = 4;
-            slider4.value = 4;
-            slider5.value = 4;
-            slider1Value.textContent = 4;
-            slider2Value.textContent = 4;
-            slider3Value.textContent = 4;
-            slider4Value.textContent = 4;
-            slider5Value.textContent = 4;
-        }
-        
-        backBtn.disabled = currentStep === 0;
-        
-        if (currentStep === questionsAndResponses.length - 1) {
-            nextBtn.style.display = 'none';
-            submitBtn.style.display = 'block';
-        } else {
-            nextBtn.style.display = 'block';
-            submitBtn.style.display = 'none';
-        }
+        // Simulate AI "typing" delay
+        setTimeout(() => {
+            removeTypingIndicator();
+            
+            // Display the AI's response
+            displayMessage({
+                sender: 'ai',
+                message: item.aiResponse
+            }, true);
+            
+            // Show the rating UI
+            showRatingUI();
+        }, 1500); // Adjust the delay (in milliseconds) as needed
     }
 
     function displayMessage(messageObj, shouldAnimate) {
@@ -741,6 +718,62 @@ try {
         }
     }
 
+    function displayTypingIndicator() {
+        const chatContainer = document.getElementById('chat-container');
+        const typingDiv = document.createElement('div');
+        typingDiv.classList.add('message', 'ai', 'typing-indicator');
+        typingDiv.id = 'typing-indicator';
+        
+        const indicatorContent = document.createElement('div');
+        indicatorContent.classList.add('message-content');
+        
+        for (let i = 0; i < 3; i++) {
+            const dot = document.createElement('span');
+            indicatorContent.appendChild(dot);
+        }
+        
+        typingDiv.appendChild(indicatorContent);
+        chatContainer.appendChild(typingDiv);
+        
+        // Scroll to bottom
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    function removeTypingIndicator() {
+        const indicator = document.getElementById('typing-indicator');
+        if (indicator) {
+            indicator.remove();
+        }
+    }
+
+    function showRatingUI() {
+        document.getElementById('rating-container').style.display = 'block';
+        updateProgress();
+        
+        // Reset sliders to middle value
+        slider1.value = 4;
+        slider2.value = 4;
+        slider3.value = 4;
+        slider4.value = 4;
+        slider5.value = 4;
+        slider1Value.textContent = 4;
+        slider2Value.textContent = 4;
+        slider3Value.textContent = 4;
+        slider4Value.textContent = 4;
+        slider5Value.textContent = 4;
+        
+        // Update button states
+        backBtn.disabled = currentStep === 0;
+        
+        if (currentStep === questionsAndResponses.length - 1) {
+            nextBtn.style.display = 'none';
+            submitBtn.style.display = 'block';
+        } else {
+            nextBtn.style.display = 'block';
+            submitBtn.style.display = 'none';
+        }
+    }
+
     function updateProgress() {
         const progress = ((currentStep + 1) / questionsAndResponses.length) * 100;
         progressBar.style.width = `${progress}%`;
@@ -748,22 +781,26 @@ try {
     }
 
     function goToNextStep() {
-    saveCurrentRatings();
-    currentStep++;
-
-    // Scroll to the top of the page
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-
-    if (currentStep < questionsAndResponses.length) {
-        showQuestionAndResponse(currentStep);
-        updateProgress();
+        saveCurrentRatings();
+        currentStep++;
+        
+        // Scroll to the top of the page
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
+        if (currentStep < questionsAndResponses.length) {
+            showQuestionAndResponse(currentStep);
+            updateProgress();
+        }
     }
-}
 
     function goToPreviousStep() {
         if (currentStep > 0) {
             saveCurrentRatings();
             currentStep--;
+            
+            // Remove typing indicator if it exists
+            removeTypingIndicator();
+            
             showQuestionAndResponse(currentStep);
             updateProgress();
         }
@@ -801,41 +838,42 @@ try {
     }
 
     function submitRatings() {
-    saveCurrentRatings();
+        saveCurrentRatings();
 
-    // Replace with your Google Web App URL
-    const googleWebAppUrl = 'https://script.google.com/macros/s/AKfycby20_eCuKhnmPrKuc0OKrx85C_5k1zC-mPd8KNtJVpA32rEZJyHmj1yEHmcJFC7RYqCnw/exec';
+        // Replace with your Google Web App URL
+        const googleWebAppUrl = 'https://script.google.com/macros/s/AKfycby20_eCuKhnmPrKuc0OKrx85C_5k1zC-mPd8KNtJVpA32rEZJyHmj1yEHmcJFC7RYqCnw/exec';
 
-    // Prepare the data to send
-    const dataToSend = {
-        participantId: participantId,
-        ratings: ratings.map(rating => ({
-            id: rating.id,
-            implementation: rating.implementation,
-            capability: rating.capability,
-            riskCalculation: rating.riskCalculation,
-            subjectMatterExperience: rating.subjectMatterExperience,
-            empathy: rating.empathy
-        }))
-    };
+        // Prepare the data to send
+        const dataToSend = {
+            participantId: participantId,
+            ratings: ratings.map(rating => ({
+                id: rating.id,
+                implementation: rating.implementation,
+                capability: rating.capability,
+                riskCalculation: rating.riskCalculation,
+                subjectMatterExperience: rating.subjectMatterExperience,
+                empathy: rating.empathy
+            }))
+        };
 
-    fetch(googleWebAppUrl, {
-        method: 'POST',
-        body: JSON.stringify(dataToSend)
-    })
-    .then(response => response.text())
-    .then(result => {
-        console.log(result);
-        alert("Ratings submitted successfully!");
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error submitting ratings!');
-    });
+        fetch(googleWebAppUrl, {
+            method: 'POST',
+            body: JSON.stringify(dataToSend)
+        })
+        .then(response => response.text())
+        .then(result => {
+            console.log(result);
+            alert("Ratings submitted successfully!");
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error submitting ratings!');
+        });
 
-    ratingContainer.style.display = 'none';
-    thankYouContainer.style.display = 'block';
-}
+        ratingContainer.style.display = 'none';
+        thankYouContainer.style.display = 'block';
+    }
+
     try {
         initializeApp();
     } catch (error) {
